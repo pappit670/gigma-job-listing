@@ -10,7 +10,7 @@ interface PhoneLoginProps {
 }
 
 export function PhoneLogin({ onComplete }: PhoneLoginProps) {
-  const { dispatch } = useApp();
+  useApp();
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
@@ -20,16 +20,31 @@ export function PhoneLogin({ onComplete }: PhoneLoginProps) {
   const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
-    if (!phone.match(/^\+254[0-9]{9}$/)) {
-      setError('Please enter a valid Kenyan phone number (+254...)');
+    // Robust normalization
+    let cleaned = phone.trim().replace(/\s+/g, '').replace(/[^\d+]/g, '');
+    let finalPhone = '';
+
+    if (cleaned.startsWith('0')) {
+      finalPhone = '+254' + cleaned.slice(1);
+    } else if (cleaned.startsWith('254') && !cleaned.startsWith('+')) {
+      finalPhone = '+' + cleaned;
+    } else if (cleaned.startsWith('+254')) {
+      finalPhone = cleaned;
+    } else if (cleaned.startsWith('+')) {
+      finalPhone = cleaned;
+    } else {
+      finalPhone = '+254' + cleaned;
+    }
+
+    if (!finalPhone.match(/^\+[1-9]\d{1,14}$/)) {
+      setError('Please enter a valid phone number (e.g., 0712345678)');
       return;
     }
 
     setIsLoading(true);
     try {
       const { error } = await supabase.auth.signInWithOtp({
-        phone: phone,
+        phone: finalPhone,
       });
       
       if (error) throw error;
@@ -47,23 +62,37 @@ export function PhoneLogin({ onComplete }: PhoneLoginProps) {
     setError('');
     
     const otpCode = otp.join('');
-    if (otpCode.length !== 6 && otpCode.length !== 4) {
-      // Supabase usually expects 6 digits, but UI was 4. 
-      // I'll adjust the UI to 6 digits in a follow-up or keep it flexible.
-      // For now, let's assume 6 is standard for Supabase.
+    if (otpCode.length !== 6) {
+      setError('Please enter the full 6-digit code');
+      return;
+    }
+
+    // Same normalization for verification
+    let cleaned = phone.trim().replace(/\s+/g, '').replace(/[^\d+]/g, '');
+    let finalPhone = '';
+
+    if (cleaned.startsWith('0')) {
+      finalPhone = '+254' + cleaned.slice(1);
+    } else if (cleaned.startsWith('254') && !cleaned.startsWith('+')) {
+      finalPhone = '+' + cleaned;
+    } else if (cleaned.startsWith('+254')) {
+      finalPhone = cleaned;
+    } else if (cleaned.startsWith('+')) {
+      finalPhone = cleaned;
+    } else {
+      finalPhone = '+254' + cleaned;
     }
 
     setIsLoading(true);
     try {
       const { error } = await supabase.auth.verifyOtp({
-        phone: phone,
+        phone: finalPhone,
         token: otpCode,
         type: 'sms',
       });
       
       if (error) throw error;
       
-      // The auth listener in AppContext will handle the state update
       onComplete();
     } catch (err: any) {
       setError(err.message || 'Invalid verification code');
@@ -112,23 +141,19 @@ export function PhoneLogin({ onComplete }: PhoneLoginProps) {
           <p className="text-body text-gray-500">
             {step === 'phone' 
               ? 'We\'ll send you a verification code' 
-              : `Enter the 6-digit code sent to ${phone}`}
+              : 'Enter the 6-digit code sent to your phone'}
           </p>
         </div>
 
         {step === 'phone' ? (
           <form onSubmit={handlePhoneSubmit} className="space-y-4">
             <div className="relative">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">
-                +254
-              </div>
               <Input
                 type="tel"
-                value={phone.replace('+254', '')}
-                onChange={(e) => setPhone('+254' + e.target.value.replace(/\D/g, ''))}
-                placeholder="7XX XXX XXX"
-                className="input-gigma pl-16 text-lg"
-                maxLength={12}
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="Phone number (e.g. 0712...)"
+                className="input-gigma px-4 text-lg"
               />
             </div>
             
@@ -138,7 +163,7 @@ export function PhoneLogin({ onComplete }: PhoneLoginProps) {
 
             <Button
               type="submit"
-              disabled={isLoading || phone.length < 13}
+              disabled={isLoading || phone.length < 9}
               className="w-full btn-primary h-14 text-lg"
             >
               {isLoading ? (
@@ -175,7 +200,7 @@ export function PhoneLogin({ onComplete }: PhoneLoginProps) {
 
             <Button
               type="submit"
-              disabled={isLoading || otp.join('').length !== 4}
+              disabled={isLoading || otp.join('').length !== 6}
               className="w-full btn-primary h-14 text-lg"
             >
               {isLoading ? (

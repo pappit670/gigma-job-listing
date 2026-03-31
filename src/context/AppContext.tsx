@@ -54,19 +54,39 @@ type AppAction =
   | { type: 'SET_SESSION'; payload: { user: User | null } }
   | { type: 'SET_LOADING'; payload: boolean };
 
+const MOCK_CURRENT_USER: User = {
+  id: 'u1',
+  phone: '+254712345678',
+  realName: 'John Kamau',
+  nickname: 'John',
+  photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face',
+  location: { lat: -1.2921, lng: 36.8219, address: 'Nairobi CBD' },
+  roles: ['worker', 'client'],
+  skills: ['plumbing', 'handyman'],
+  rating: 4.8,
+  totalJobs: 47,
+  joinedAt: new Date('2025-06-15'),
+  isVerified: true,
+};
+
 const initialState: AppState = {
-  isAuthenticated: false,
-  currentUser: null,
+  isAuthenticated: true,
+  currentUser: MOCK_CURRENT_USER,
   onboardingStep: 0,
   jobs: [],
   workers: [],
   notifications: [],
   messages: [],
-  wallet: null,
+  wallet: {
+    userId: 'u1',
+    balance: 2500,
+    currency: 'KES',
+    transactions: [],
+  },
   reviews: [],
   activeTab: 'home',
   unreadNotifications: 0,
-  isLoading: true,
+  isLoading: false,
   pendingJobNotifications: [],
 };
 
@@ -618,57 +638,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
   useEffect(() => {
-    // 1. Auth Listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        dispatch({ type: 'SET_LOADING', payload: true });
-        
-        try {
-          const { data: profile, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-
-          if (error && error.code !== 'PGRST116') {
-            console.error('Error fetching profile:', error);
-          }
-
-          if (profile) {
-            const user: User = {
-              ...profile,
-              joinedAt: new Date(profile.joinedAt || profile.created_at),
-            };
-            dispatch({ type: 'SET_SESSION', payload: { user } });
-          } else {
-            const user: User = {
-              id: session.user.id,
-              phone: session.user.phone || '',
-              realName: session.user.user_metadata?.full_name || '',
-              photo: session.user.user_metadata?.avatar_url || '',
-              location: {
-                lat: -1.2921,
-                lng: 36.8219,
-                address: 'Nairobi, Kenya',
-              },
-              roles: [],
-              skills: [],
-              rating: 0,
-              totalJobs: 0,
-              joinedAt: new Date(session.user.created_at),
-              isVerified: false,
-            };
-            dispatch({ type: 'SET_SESSION', payload: { user } });
-          }
-        } catch (err) {
-          console.error('Unexpected error in auth listener:', err);
-        } finally {
-          dispatch({ type: 'SET_LOADING', payload: false });
-        }
-      } else {
-        dispatch({ type: 'SET_SESSION', payload: { user: null } });
-        dispatch({ type: 'SET_LOADING', payload: false });
-      }
+    // 1. Auth Listener (Bypassed)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, _session) => {
+      // Logic disabled for auth bypass
     });
 
     // 2. Real-time Jobs Listener
