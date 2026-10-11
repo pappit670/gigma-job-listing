@@ -1,0 +1,489 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Gigma Design System - Minimal & Slick */
+/* Inspired by Cash App + Notion */
+
+:root {
+  /* Primary Colors */
+  --gigma-black: #0a0a0a;
+  --gigma-dark: #1a1a1a;
+  --gigma-gray-900: #262626;
+  --gigma-gray-800: #404040;
+  --gigma-gray-700: #525252;
+  --gigma-gray-600: #737373;
+  --gigma-gray-500: #a3a3a3;
+  --gigma-gray-400: #d4d4d4;
+  --gigma-gray-300: #e5e5e5;
+  --gigma-gray-200: #f5f5f5;
+  --gigma-gray-100: #fafafa;
+  --gigma-white: #ffffff;
+
+  /* Accent Color - Teal/Green */
+  --gigma-accent: #10b981;
+  --gigma-accent-light: #34d399;
+  --gigma-accent-dark: #059669;
+
+  /* Status Colors */
+  --status-ready: #22c55e;
+  --status-in-progress: #f97316;
+  --status-busy: #ef4444;
+  --status-completed: #10b981;
+
+  /* Semantic Colors */
+  --background: 0 0% 100%;
+  --foreground: 0 0% 4%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 4%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 4%;
+  --primary: 160 84% 39%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 96%;
+  --secondary-foreground: 0 0% 9%;
+  --muted: 0 0% 96%;
+  --muted-foreground: 0 0% 45%;
+  --accent: 160 84% 39%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 0 0% 90%;
+  --input: 0 0% 90%;
+  --ring: 160 84% 39%;
+  --radius: 0.75rem;
+
+  /* Shadows - Soft */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-soft: 0 2px 8px rgb(0 0 0 / 0.08);
+
+  /* Spacing - 8px Grid */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  /* Typography */
+  --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "SF Mono", "Monaco", "Inconsolata", "Fira Code", monospace;
+}
+
+.dark {
+  --background: 0 0% 4%;
+  --foreground: 0 0% 98%;
+  --card: 0 0% 6%;
+  --card-foreground: 0 0% 98%;
+  --popover: 0 0% 6%;
+  --popover-foreground: 0 0% 98%;
+  --primary: 160 84% 39%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 12%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 0 0% 12%;
+  --muted-foreground: 0 0% 60%;
+  --accent: 160 84% 39%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 62% 30%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 0 0% 15%;
+  --input: 0 0% 15%;
+  --ring: 160 84% 39%;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+}
+
+/* Typography Scale */
+.text-display {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.text-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.text-headline {
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.text-body {
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.text-small {
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.text-caption {
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.text-mono {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+/* Status Indicators */
+.status-ready {
+  background-color: var(--status-ready);
+  color: white;
+}
+
+.status-in-progress {
+  background-color: var(--status-in-progress);
+  color: white;
+}
+
+.status-busy {
+  background-color: var(--status-busy);
+  color: white;
+}
+
+.status-completed {
+  background-color: var(--status-completed);
+  color: white;
+}
+
+/* Status Dots */
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-dot-ready { background-color: var(--status-ready); }
+.status-dot-in-progress { background-color: var(--status-in-progress); }
+.status-dot-busy { background-color: var(--status-busy); }
+.status-dot-completed { background-color: var(--status-completed); }
+
+/* Card Styles */
+.card-gigma {
+  background: white;
+  border-radius: 1rem;
+  box-shadow: var(--shadow-soft);
+  border: 1px solid var(--gigma-gray-200);
+  overflow: hidden;
+}
+
+.card-gigma-dark {
+  background: var(--gigma-dark);
+  border-radius: 1rem;
+  box-shadow: var(--shadow-soft);
+  border: 1px solid var(--gigma-gray-800);
+  overflow: hidden;
+}
+
+/* Button Styles */
+.btn-primary {
+  background-color: var(--gigma-black);
+  color: white;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1.5rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-primary:hover {
+  background-color: var(--gigma-gray-800);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-accent {
+  background-color: var(--gigma-accent);
+  color: white;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1.5rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-accent:hover {
+  background-color: var(--gigma-accent-dark);
+  transform: translateY(-1px);
+}
+
+.btn-outline {
+  background-color: transparent;
+  color: var(--gigma-black);
+  border: 1px solid var(--gigma-gray-300);
+  border-radius: 0.75rem;
+  padding: 0.75rem 1.5rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-outline:hover {
+  background-color: var(--gigma-gray-100);
+  border-color: var(--gigma-gray-400);
+}
+
+/* Input Styles */
+.input-gigma {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--gigma-gray-300);
+  border-radius: 0.75rem;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  background: white;
+}
+
+.input-gigma:focus {
+  outline: none;
+  border-color: var(--gigma-accent);
+  box-shadow: 0 0 0 3px rgb(16 185 129 / 0.1);
+}
+
+.input-gigma::placeholder {
+  color: var(--gigma-gray-500);
+}
+
+/* Profile Photo */
+.profile-photo {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid white;
+  box-shadow: var(--shadow-sm);
+}
+
+.profile-photo-lg {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid white;
+  box-shadow: var(--shadow-md);
+}
+
+.profile-photo-sm {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid white;
+}
+
+/* Skill Tags */
+.skill-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.375rem 0.75rem;
+  background-color: var(--gigma-gray-100);
+  color: var(--gigma-gray-700);
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.skill-tag-active {
+  background-color: var(--gigma-accent);
+  color: white;
+}
+
+/* Wallet Balance */
+.wallet-balance {
+  font-family: var(--font-mono);
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--gigma-black);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out forwards;
+}
+
+.animate-pulse-soft {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* Mobile-First Container */
+.app-container {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  background: white;
+  position: relative;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.1);
+}
+
+@media (min-width: 481px) {
+  .app-container {
+    max-width: 100%;
+  }
+}
+
+/* Bottom Navigation */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  border-top: 1px solid var(--gigma-gray-200);
+  padding: 0.5rem 0;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  z-index: 50;
+}
+
+.bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  color: var(--gigma-gray-500);
+  font-size: 0.625rem;
+  transition: color 0.2s ease;
+}
+
+.bottom-nav-item.active {
+  color: var(--gigma-accent);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--gigma-gray-100);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--gigma-gray-400);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gigma-gray-500);
+}
+
+/* Safe Area for Mobile */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 80px);
+}
+
+/* Notification Badge */
+.notification-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 18px;
+  height: 18px;
+  background-color: var(--status-busy);
+  color: white;
+  font-size: 0.625rem;
+  font-weight: 600;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid white;
+}
+
+/* Rating Stars */
+.rating-stars {
+  display: flex;
+  gap: 0.125rem;
+}
+
+.star-filled {
+  color: #fbbf24;
+}
+
+.star-empty {
+  color: var(--gigma-gray-300);
+}
+
+/* Job Card */
+.job-card {
+  background: white;
+  border-radius: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--gigma-gray-200);
+  transition: all 0.2s ease;
+}
+
+.job-card:hover {
+  border-color: var(--gigma-gray-300);
+  box-shadow: var(--shadow-md);
+}
+
+/* Loading Skeleton */
+.skeleton {
+  background: linear-gradient(90deg, var(--gigma-gray-200) 25%, var(--gigma-gray-100) 50%, var(--gigma-gray-200) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+  border-radius: 0.5rem;
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
