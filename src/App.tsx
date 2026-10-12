@@ -93,7 +93,6 @@ function AppContent() {
   return (
     <div className="g-app-shell">
       <div className="g-device-wrap">
-        <div className="g-scroll-wheel" aria-hidden="true" />
         <div className="app-container">
           {renderView()}
           <Toaster position="top-center" />
