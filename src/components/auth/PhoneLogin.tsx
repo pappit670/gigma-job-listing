@@ -1,240 +1,83 @@
-import { useState } from 'react';
-import { Phone, ArrowRight, Shield, Check } from 'lucide-react';
+import { ArrowRight, Check, Phone, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { useApp } from '@/context/AppContext';
-import { supabase } from '@/lib/supabase';
+import type { User } from '@/types';
 
 interface PhoneLoginProps {
   onComplete: () => void;
 }
 
 export function PhoneLogin({ onComplete }: PhoneLoginProps) {
-  useApp();
-  const [step, setStep] = useState<'phone' | 'otp'>('phone');
-  const [phone, setPhone] = useState('');
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const { dispatch } = useApp();
 
-  const handlePhoneSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    // Robust normalization
-    let cleaned = phone.trim().replace(/\s+/g, '').replace(/[^\d+]/g, '');
-    let finalPhone = '';
+  const continueAsDemo = () => {
+    const demoUser: User = {
+      id: 'demo-user',
+      phone: '+254700000000',
+      realName: 'Demo User',
+      nickname: 'Demo',
+      photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face',
+      location: {
+        lat: -1.2921,
+        lng: 36.8219,
+        address: 'Nairobi, Kenya',
+      },
+      roles: ['client'],
+      skills: ['handyman', 'cleaning'],
+      rating: 4.8,
+      totalJobs: 12,
+      joinedAt: new Date(),
+      isVerified: true,
+      recentWorkers: [],
+    };
 
-    if (cleaned.startsWith('0')) {
-      finalPhone = '+254' + cleaned.slice(1);
-    } else if (cleaned.startsWith('254') && !cleaned.startsWith('+')) {
-      finalPhone = '+' + cleaned;
-    } else if (cleaned.startsWith('+254')) {
-      finalPhone = cleaned;
-    } else if (cleaned.startsWith('+')) {
-      finalPhone = cleaned;
-    } else {
-      finalPhone = '+254' + cleaned;
-    }
+    dispatch({
+      type: 'SET_SESSION',
+      payload: { user: demoUser },
+    });
 
-    if (!finalPhone.match(/^\+[1-9]\d{1,14}$/)) {
-      setError('Please enter a valid phone number (e.g., 0712345678)');
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const { error } = await supabase.auth.signInWithOtp({
-        phone: finalPhone,
-      });
-      
-      if (error) throw error;
-      
-      setStep('otp');
-    } catch (err: any) {
-      setError(err.message || 'Failed to send verification code');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleOtpSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    
-    const otpCode = otp.join('');
-    if (otpCode.length !== 6) {
-      setError('Please enter the full 6-digit code');
-      return;
-    }
-
-    // Same normalization for verification
-    let cleaned = phone.trim().replace(/\s+/g, '').replace(/[^\d+]/g, '');
-    let finalPhone = '';
-
-    if (cleaned.startsWith('0')) {
-      finalPhone = '+254' + cleaned.slice(1);
-    } else if (cleaned.startsWith('254') && !cleaned.startsWith('+')) {
-      finalPhone = '+' + cleaned;
-    } else if (cleaned.startsWith('+254')) {
-      finalPhone = cleaned;
-    } else if (cleaned.startsWith('+')) {
-      finalPhone = cleaned;
-    } else {
-      finalPhone = '+254' + cleaned;
-    }
-
-    setIsLoading(true);
-    try {
-      const { error } = await supabase.auth.verifyOtp({
-        phone: finalPhone,
-        token: otpCode,
-        type: 'sms',
-      });
-      
-      if (error) throw error;
-      
-      onComplete();
-    } catch (err: any) {
-      setError(err.message || 'Invalid verification code');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleOtpChange = (index: number, value: string) => {
-    if (value.length > 1) value = value[0];
-    if (!/^[0-9]*$/.test(value)) return;
-    
-    const newOtp = [...otp];
-    newOtp[index] = value;
-    setOtp(newOtp);
-    
-    // Auto-focus next input
-    if (value && index < 5) {
-      const nextInput = document.getElementById(`otp-${index + 1}`);
-      nextInput?.focus();
-    }
-  };
-
-  const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
-    if (e.key === 'Backspace' && !otp[index] && index > 0) {
-      const prevInput = document.getElementById(`otp-${index - 1}`);
-      prevInput?.focus();
-    }
+    onComplete();
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
-      {/* Header */}
+    <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-white flex flex-col">
       <div className="flex-1 flex flex-col justify-center px-6 py-12">
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
-            {step === 'phone' ? (
+        <div className="mx-auto w-full max-w-sm">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 bg-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm">
               <Phone className="w-8 h-8 text-emerald-600" />
-            ) : (
-              <Shield className="w-8 h-8 text-emerald-600" />
-            )}
+            </div>
+            <h1 className="text-display mb-3">Welcome to Gigma</h1>
+            <p className="text-body text-gray-500">
+              SMS verification is still being set up, so this build is using demo access for now.
+            </p>
           </div>
-          <h1 className="text-display mb-3">
-            {step === 'phone' ? 'Enter your phone' : 'Verify your number'}
-          </h1>
-          <p className="text-body text-gray-500">
-            {step === 'phone' 
-              ? 'We\'ll send you a verification code' 
-              : 'Enter the 6-digit code sent to your phone'}
-          </p>
-        </div>
 
-        {step === 'phone' ? (
-          <form onSubmit={handlePhoneSubmit} className="space-y-4">
-            <div className="relative">
-              <Input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="Phone number (e.g. 0712...)"
-                className="input-gigma px-4 text-lg"
-              />
+          <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-soft">
+            <div className="flex items-center gap-3 rounded-2xl bg-emerald-50 px-3 py-2.5 mb-5 border border-emerald-100">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 text-white">
+                <Check className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900">Launch-ready demo mode</p>
+              </div>
             </div>
-            
-            {error && (
-              <p className="text-sm text-red-500 text-center">{error}</p>
-            )}
 
             <Button
-              type="submit"
-              disabled={isLoading || phone.length < 9}
-              className="w-full btn-primary h-14 text-lg"
-            >
-              {isLoading ? (
-                <span className="animate-pulse">Sending...</span>
-              ) : (
-                <>
-                  Continue
-                  <ArrowRight className="w-5 h-5 ml-2" />
-                </>
-              )}
-            </Button>
-          </form>
-        ) : (
-          <form onSubmit={handleOtpSubmit} className="space-y-6">
-            <div className="flex justify-center gap-2">
-              {[0, 1, 2, 3, 4, 5].map((index) => (
-                <Input
-                  key={index}
-                  id={`otp-${index}`}
-                  type="text"
-                  inputMode="numeric"
-                  value={otp[index]}
-                  onChange={(e) => handleOtpChange(index, e.target.value)}
-                  onKeyDown={(e) => handleKeyDown(index, e)}
-                  className="w-11 h-16 text-center text-2xl font-bold input-gigma px-0"
-                  maxLength={1}
-                />
-              ))}
-            </div>
-            
-            {error && (
-              <p className="text-sm text-red-500 text-center">{error}</p>
-            )}
-
-            <Button
-              type="submit"
-              disabled={isLoading || otp.join('').length !== 6}
-              className="w-full btn-primary h-14 text-lg"
-            >
-              {isLoading ? (
-                <span className="animate-pulse">Verifying...</span>
-              ) : (
-                <>
-                  Verify
-                  <Check className="w-5 h-5 ml-2" />
-                </>
-              )}
-            </Button>
-
-            <button
               type="button"
-              onClick={() => setStep('phone')}
-              className="w-full text-center text-sm text-gray-500 hover:text-gray-700"
+              onClick={continueAsDemo}
+              className="w-full btn-primary h-14 text-base font-medium"
             >
-              Change phone number
-            </button>
-          </form>
-        )}
-      </div>
+              Continue without SMS
+              <ArrowRight className="w-5 h-5 ml-2" />
+            </Button>
 
-      {/* Footer */}
-      <div className="px-6 py-6 text-center">
-        <p className="text-caption text-gray-400">
-          By continuing, you agree to our{' '}
-          <a href="#" className="text-emerald-600 hover:underline">Terms</a>
-          {' '}and{' '}
-          <a href="#" className="text-emerald-600 hover:underline">Privacy Policy</a>
-        </p>
-        <p className="text-caption text-gray-400 mt-4">
-          Powered by TerraWork
-        </p>
+            <div className="mt-5 flex items-center justify-center gap-2 text-xs text-gray-500">
+              <Shield className="h-3.5 w-3.5 text-emerald-600" />
+              <span>Phone OTP will be enabled once the Supabase SMS provider is configured.</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -846,6 +846,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     dispatch({ type: 'SET_LOADING', payload: true });
     try {
+      if (state.currentUser.id === 'demo-user') {
+        dispatch({ type: 'UPDATE_USER', payload: updates });
+        return;
+      }
+
       const { error } = await supabase
         .from('profiles')
         .upsert({
@@ -859,6 +864,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'UPDATE_USER', payload: updates });
     } catch (err) {
       console.error('Error saving profile:', err);
+      if (state.currentUser?.id === 'demo-user') {
+        dispatch({ type: 'UPDATE_USER', payload: updates });
+        return;
+      }
       throw err;
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
@@ -919,21 +928,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const uploadImage = async (file: File, bucket: 'job-photos' | 'profile-photos') => {
     dispatch({ type: 'SET_LOADING', payload: true });
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `${state.currentUser?.id}/${fileName}`;
+      if (!file || !file.type.startsWith('image/')) {
+        throw new Error('Invalid image file');
+      }
 
-      const { error: uploadError } = await supabase.storage
-        .from(bucket)
-        .upload(filePath, file);
+      const fileExt = file.name.split('.').pop() || 'png';
+      const fileName = `${Date.now()}-${Math.random().toString(16).slice(2)}.${fileExt}`;
+      const filePath = `${state.currentUser?.id ?? 'uploads'}/${fileName}`;
 
-      if (uploadError) throw uploadError;
+      try {
+        const { error: uploadError } = await supabase.storage
+          .from(bucket)
+          .upload(filePath, file, {
+            upsert: true,
+            contentType: file.type,
+          });
 
-      const { data: { publicUrl } } = supabase.storage
-        .from(bucket)
-        .getPublicUrl(filePath);
+        if (!uploadError) {
+          const { data } = supabase.storage
+            .from(bucket)
+            .getPublicUrl(filePath);
 
-      return publicUrl;
+          return data.publicUrl || null;
+        }
+
+        console.warn('Storage upload failed, falling back to local preview:', uploadError.message);
+      } catch (storageError) {
+        console.warn('Storage upload unavailable, using local preview fallback:', storageError);
+      }
+
+      return await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (typeof reader.result === 'string') {
+            resolve(reader.result);
+          } else {
+            resolve('');
+          }
+        };
+        reader.onerror = () => resolve('');
+        reader.readAsDataURL(file);
+      });
     } catch (err) {
       console.error('Error uploading image:', err);
       return null;
