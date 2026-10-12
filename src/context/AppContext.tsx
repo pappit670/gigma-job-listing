@@ -326,7 +326,6 @@ function findWorkersInRadius(
   radiusKm: number
 ): WorkerProfile[] {
   return workers.filter(worker => {
-    // Skip offline workers
     if (worker.availability === 'offline') return false;
     
     const distance = calculateDistance(
@@ -337,6 +336,55 @@ function findWorkersInRadius(
     );
     return distance <= radiusKm;
   });
+}
+
+async function findNearbyWorkersFromSupabase(
+  jobLat: number,
+  jobLng: number,
+  radiusKm: number
+): Promise<WorkerProfile[]> {
+  const radiusMeters = Math.max(100, Math.round(radiusKm * 1000));
+
+  try {
+    const { data, error } = await supabase.rpc('find_nearby_workers', {
+      lat: jobLat,
+      lng: jobLng,
+      radius_m: radiusMeters,
+    });
+
+    if (error || !Array.isArray(data)) {
+      return [];
+    }
+
+    return data.map((row: any) => ({
+      id: row.id ?? row.worker_id ?? row.user_id,
+      userId: row.user_id ?? row.worker_id ?? row.id,
+      photo: row.photo ?? 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face',
+      nickname: row.nickname ?? row.real_name ?? 'Worker',
+      realName: row.real_name ?? row.nickname ?? 'Worker',
+      skills: Array.isArray(row.skills) ? row.skills : [],
+      rating: Number(row.rating ?? 0),
+      totalJobs: Number(row.total_jobs ?? 0),
+      joinedAt: new Date(row.joined_at ?? Date.now()),
+      bio: row.bio ?? '',
+      availability: row.availability ?? 'available',
+      currentJobId: row.current_job_id ?? undefined,
+      location: {
+        lat: Number(row.lat ?? row.location?.lat ?? row.current_lat ?? 0),
+        lng: Number(row.lng ?? row.location?.lng ?? row.current_lng ?? 0),
+        address: row.address ?? 'Live worker location',
+      },
+      reputationScore: Number(row.reputation_score ?? row.reputationScore ?? 0),
+      completedJobs: Number(row.completed_jobs ?? row.completedJobs ?? 0),
+      cancelledJobs: Number(row.cancelled_jobs ?? row.cancelledJobs ?? 0),
+      disputedJobs: Number(row.disputed_jobs ?? row.disputedJobs ?? 0),
+      onTimeArrivalRate: Number(row.on_time_arrival_rate ?? row.onTimeArrivalRate ?? 0),
+      lastActiveAt: new Date(row.last_active_at ?? Date.now()),
+    }));
+  } catch (err) {
+    console.error('Nearby worker query failed, falling back to local radius logic:', err);
+    return [];
+  }
 }
 
 function appReducer(state: AppState, action: AppAction): AppState {
@@ -708,13 +756,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
       )
       .subscribe();
 
+    const workerLocationsChannel = supabase
+      .channel('public:worker_locations')
+      .on(
+        'postgres_changes' as any,
+        { event: '*', table: 'worker_locations', schema: 'public' },
+        (payload: any) => {
+          const current = payload.new ?? payload.old;
+          if (!current || !current.worker_id) return;
+
+          const worker = state.workers.find(w => w.userId === current.worker_id);
+          if (!worker) return;
+
+          dispatch({
+            type: 'UPDATE_WORKER',
+            payload: {
+              ...worker,
+              location: {
+                lat: Number(current.lat ?? worker.location.lat),
+                lng: Number(current.lng ?? worker.location.lng),
+                address: current.address ?? worker.location.address,
+              },
+              lastActiveAt: new Date(current.updated_at ?? Date.now()),
+            },
+          });
+        }
+      )
+      .subscribe();
+
     return () => {
       subscription.unsubscribe();
       supabase.removeChannel(jobsChannel);
       supabase.removeChannel(transactionsChannel);
       supabase.removeChannel(messagesChannel);
+      supabase.removeChannel(workerLocationsChannel);
     };
-  }, []);
+  }, [state.workers]);
 
   const saveProfile = async (updates: Partial<User>) => {
     if (!state.currentUser) return;
@@ -756,8 +833,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
         .single();
       
       if (error) throw error;
+
+      const nearbyWorkers = await findNearbyWorkersFromSupabase(
+        jobData.location.lat,
+        jobData.location.lng,
+        jobData.broadcastRadius || 5
+      );
+
+      const matchedWorkers = nearbyWorkers.length > 0 ? nearbyWorkers : findWorkersInRadius(
+        state.workers,
+        jobData.location.lat,
+        jobData.location.lng,
+        jobData.broadcastRadius || 5
+      );
+
+      for (const worker of matchedWorkers) {
+        await supabase.from('notifications').insert({
+          user_id: worker.userId,
+          type: 'job',
+          title: 'New Job Near You',
+          message: `A new ${jobData.category} job is available near you in ${jobData.location.address.split(',')[0]}. Budget: KES ${jobData.budget.toLocaleString()}`,
+          data: { jobId: data.id, type: 'job_broadcast' },
+          is_read: false,
+          expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+        });
+      }
       
-      // We don't need to dispatch ADD_JOB here because the real-time listener will catch it
       return data.id;
     } catch (err) {
       console.error('Error posting job:', err);

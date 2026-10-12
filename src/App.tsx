@@ -15,7 +15,7 @@ import { toast } from 'sonner';
 
 function AppContent() {
   const { state } = useApp();
-  const [view, setView] = useState<'auth' | 'onboarding' | 'main' | 'post-job' | 'wallet' | 'chat' | 'notifications' | 'profile' | 'component-showcase'>('main');
+  const [view, setView] = useState<'auth' | 'onboarding' | 'main' | 'post-job' | 'wallet' | 'chat' | 'notifications' | 'profile' | 'component-showcase'>('auth');
 
   // Handle auth completion
   const handleAuthComplete = () => {

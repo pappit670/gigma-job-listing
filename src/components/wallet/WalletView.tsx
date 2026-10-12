@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, ArrowUpRight, ArrowDownRight, Wallet, History, CreditCard } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, ArrowDownRight, Wallet, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useApp } from '@/context/AppContext';
 
