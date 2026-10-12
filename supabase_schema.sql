@@ -82,6 +82,93 @@ CREATE TABLE messages (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- 7. Live Worker Locations Table
+CREATE EXTENSION IF NOT EXISTS postgis;
+
+CREATE TABLE IF NOT EXISTS worker_locations (
+  worker_id UUID PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
+  lat DOUBLE PRECISION NOT NULL,
+  lng DOUBLE PRECISION NOT NULL,
+  heading DOUBLE PRECISION,
+  geog GEOGRAPHY(Point, 4326),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE OR REPLACE FUNCTION update_worker_geog()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.geog = ST_SetSRID(ST_MakePoint(NEW.lng, NEW.lat), 4326)::geography;
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_worker_geog ON worker_locations;
+CREATE TRIGGER trg_worker_geog
+BEFORE INSERT OR UPDATE ON worker_locations
+FOR EACH ROW EXECUTE FUNCTION update_worker_geog();
+
+CREATE INDEX IF NOT EXISTS idx_worker_locations_geog
+ON worker_locations USING GIST(geog);
+
+CREATE OR REPLACE FUNCTION find_nearby_workers(lat DOUBLE PRECISION, lng DOUBLE PRECISION, radius_m INTEGER DEFAULT 5000)
+RETURNS TABLE (
+  id UUID,
+  user_id UUID,
+  real_name TEXT,
+  nickname TEXT,
+  photo TEXT,
+  rating DOUBLE PRECISION,
+  total_jobs INTEGER,
+  availability TEXT,
+  reputation_score INTEGER,
+  completed_jobs INTEGER,
+  cancelled_jobs INTEGER,
+  disputed_jobs INTEGER,
+  on_time_arrival_rate DOUBLE PRECISION,
+  last_active_at TIMESTAMPTZ,
+  worker_lat DOUBLE PRECISION,
+  worker_lng DOUBLE PRECISION,
+  address TEXT,
+  distance_m DOUBLE PRECISION
+)
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT
+    p.id,
+    p.id AS user_id,
+    p.real_name,
+    p.nickname,
+    p.photo,
+    p.rating,
+    p.total_jobs,
+    wp.availability,
+    wp.reputation_score,
+    wp.completed_jobs,
+    wp.cancelled_jobs,
+    wp.disputed_jobs,
+    wp.on_time_arrival_rate,
+    wp.last_active_at,
+    wl.lat AS worker_lat,
+    wl.lng AS worker_lng,
+    COALESCE(p.location->>'address', 'Live worker location') AS address,
+    ST_Distance(wl.geog, ST_SetSRID(ST_MakePoint(lng, lat), 4326)::geography) AS distance_m
+  FROM worker_locations wl
+  JOIN profiles p ON p.id = wl.worker_id
+  LEFT JOIN worker_profiles wp ON wp.user_id = p.id
+  WHERE wp.availability IS DISTINCT FROM 'offline'
+    AND wl.geog IS NOT NULL
+    AND ST_DWithin(
+      wl.geog,
+      ST_SetSRID(ST_MakePoint(lng, lat), 4326)::geography,
+      radius_m
+    )
+  ORDER BY distance_m ASC;
+$$;
+
+ALTER PUBLICATION supabase_realtime ADD TABLE worker_locations;
+
 -- Row Level Security (RLS)
 
 -- Profiles

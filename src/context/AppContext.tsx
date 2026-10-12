@@ -352,35 +352,83 @@ async function findNearbyWorkersFromSupabase(
       radius_m: radiusMeters,
     });
 
-    if (error || !Array.isArray(data)) {
+    if (Array.isArray(data) && data.length > 0) {
+      return data.map((row: any) => ({
+        id: row.id ?? row.worker_id ?? row.user_id,
+        userId: row.user_id ?? row.worker_id ?? row.id,
+        photo: row.photo ?? 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face',
+        nickname: row.nickname ?? row.real_name ?? 'Worker',
+        realName: row.real_name ?? row.nickname ?? 'Worker',
+        skills: Array.isArray(row.skills) ? row.skills : [],
+        rating: Number(row.rating ?? 0),
+        totalJobs: Number(row.total_jobs ?? 0),
+        joinedAt: new Date(row.joined_at ?? Date.now()),
+        bio: row.bio ?? '',
+        availability: row.availability ?? 'available',
+        currentJobId: row.current_job_id ?? undefined,
+        location: {
+          lat: Number(row.worker_lat ?? row.lat ?? row.location?.lat ?? row.current_lat ?? 0),
+          lng: Number(row.worker_lng ?? row.lng ?? row.location?.lng ?? row.current_lng ?? 0),
+          address: row.address ?? 'Live worker location',
+        },
+        reputationScore: Number(row.reputation_score ?? row.reputationScore ?? 0),
+        completedJobs: Number(row.completed_jobs ?? row.completedJobs ?? 0),
+        cancelledJobs: Number(row.cancelled_jobs ?? row.cancelledJobs ?? 0),
+        disputedJobs: Number(row.disputed_jobs ?? row.disputedJobs ?? 0),
+        onTimeArrivalRate: Number(row.on_time_arrival_rate ?? row.onTimeArrivalRate ?? 0),
+        lastActiveAt: new Date(row.last_active_at ?? Date.now()),
+      }));
+    }
+
+    if (error) {
+      console.warn('find_nearby_workers RPC unavailable, falling back to worker_locations table:', error.message);
+    }
+
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from('worker_locations')
+      .select('*');
+
+    if (fallbackError || !Array.isArray(fallbackData)) {
       return [];
     }
 
-    return data.map((row: any) => ({
-      id: row.id ?? row.worker_id ?? row.user_id,
-      userId: row.user_id ?? row.worker_id ?? row.id,
-      photo: row.photo ?? 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face',
-      nickname: row.nickname ?? row.real_name ?? 'Worker',
-      realName: row.real_name ?? row.nickname ?? 'Worker',
-      skills: Array.isArray(row.skills) ? row.skills : [],
-      rating: Number(row.rating ?? 0),
-      totalJobs: Number(row.total_jobs ?? 0),
-      joinedAt: new Date(row.joined_at ?? Date.now()),
-      bio: row.bio ?? '',
-      availability: row.availability ?? 'available',
-      currentJobId: row.current_job_id ?? undefined,
-      location: {
-        lat: Number(row.lat ?? row.location?.lat ?? row.current_lat ?? 0),
-        lng: Number(row.lng ?? row.location?.lng ?? row.current_lng ?? 0),
-        address: row.address ?? 'Live worker location',
-      },
-      reputationScore: Number(row.reputation_score ?? row.reputationScore ?? 0),
-      completedJobs: Number(row.completed_jobs ?? row.completedJobs ?? 0),
-      cancelledJobs: Number(row.cancelled_jobs ?? row.cancelledJobs ?? 0),
-      disputedJobs: Number(row.disputed_jobs ?? row.disputedJobs ?? 0),
-      onTimeArrivalRate: Number(row.on_time_arrival_rate ?? row.onTimeArrivalRate ?? 0),
-      lastActiveAt: new Date(row.last_active_at ?? Date.now()),
-    }));
+    return fallbackData
+      .map((row: any) => {
+        const workerLat = Number(row.lat ?? 0);
+        const workerLng = Number(row.lng ?? 0);
+        const distanceKm = calculateDistance(jobLat, jobLng, workerLat, workerLng);
+
+        if (distanceKm > radiusKm) {
+          return null;
+        }
+
+        return {
+          id: row.worker_id ?? row.id,
+          userId: row.worker_id ?? row.id,
+          photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face',
+          nickname: 'Live Worker',
+          realName: 'Live Worker',
+          skills: [],
+          rating: 0,
+          totalJobs: 0,
+          joinedAt: new Date(row.updated_at ?? Date.now()),
+          bio: '',
+          availability: 'available',
+          currentJobId: undefined,
+          location: {
+            lat: workerLat,
+            lng: workerLng,
+            address: 'Live worker location',
+          },
+          reputationScore: 0,
+          completedJobs: 0,
+          cancelledJobs: 0,
+          disputedJobs: 0,
+          onTimeArrivalRate: 0,
+          lastActiveAt: new Date(row.updated_at ?? Date.now()),
+        } satisfies WorkerProfile;
+      })
+      .filter(Boolean) as WorkerProfile[];
   } catch (err) {
     console.error('Nearby worker query failed, falling back to local radius logic:', err);
     return [];
