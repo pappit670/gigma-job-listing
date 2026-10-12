@@ -91,9 +91,11 @@ function AppContent() {
   };
 
   return (
-    <div className="app-container">
-      {renderView()}
-      <Toaster position="top-center" />
+    <div className="g-app-shell">
+      <div className="app-container">
+        {renderView()}
+        <Toaster position="top-center" />
+      </div>
     </div>
   );
 }

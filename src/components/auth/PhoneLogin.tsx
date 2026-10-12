@@ -1,4 +1,4 @@
-import { ArrowRight, Check, Phone, Shield } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useApp } from '@/context/AppContext';
 import type { User } from '@/types';
@@ -40,44 +40,53 @@ export function PhoneLogin({ onComplete }: PhoneLoginProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-white flex flex-col">
-      <div className="flex-1 flex flex-col justify-center px-6 py-12">
-        <div className="mx-auto w-full max-w-sm">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm">
-              <Phone className="w-8 h-8 text-emerald-600" />
-            </div>
-            <h1 className="text-display mb-3">Welcome to Gigma</h1>
-            <p className="text-body text-gray-500">
-              SMS verification is still being set up, so this build is using demo access for now.
-            </p>
+    <div className="g-auth-shell">
+      <div className="g-status-bar">
+        <span>9:41</span>
+        <div className="g-status-right">
+          <div className="g-bars">
+            <span />
+            <span />
+            <span />
+            <span />
           </div>
-
-          <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-soft">
-            <div className="flex items-center gap-3 rounded-2xl bg-emerald-50 px-3 py-2.5 mb-5 border border-emerald-100">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 text-white">
-                <Check className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-900">Launch-ready demo mode</p>
-              </div>
-            </div>
-
-            <Button
-              type="button"
-              onClick={continueAsDemo}
-              className="w-full btn-primary h-14 text-base font-medium"
-            >
-              Continue without SMS
-              <ArrowRight className="w-5 h-5 ml-2" />
-            </Button>
-
-            <div className="mt-5 flex items-center justify-center gap-2 text-xs text-gray-500">
-              <Shield className="h-3.5 w-3.5 text-emerald-600" />
-              <span>Phone OTP will be enabled once the Supabase SMS provider is configured.</span>
-            </div>
+          <span>5G</span>
+          <div className="g-signal">
+            <div className="g-signal-inner" />
           </div>
         </div>
+      </div>
+
+      <div className="g-auth-inner">
+        <div className="g-brand-mark">g</div>
+
+        <h1 className="g-title">Get it done<br />in minutes.</h1>
+        <p className="g-subtitle">
+          Post a job or find quick work near you. Enter your phone to start.
+        </p>
+
+        <label className="g-field-label">Phone number</label>
+
+        <div className="g-phone-field">
+          <span className="g-country">+254</span>
+          <div className="g-divider" />
+          <span className="g-phone-text">712 345 678</span>
+        </div>
+
+        <Button
+          type="button"
+          onClick={continueAsDemo}
+          className="g-send-button"
+        >
+          Send code
+          <ArrowRight className="w-4 h-4" />
+        </Button>
+
+        <p className="g-legal">
+          By continuing you agree to Gigma&apos;s <a href="#">Terms</a> &amp; <a href="#">Privacy</a>
+          <br />
+          <span>Powered by TerraWork</span>
+        </p>
       </div>
     </div>
   );
