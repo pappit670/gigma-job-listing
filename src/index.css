@@ -54,6 +54,46 @@ button, input, textarea, select {
   width: 100%;
 }
 
+.g-device-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.g-scroll-wheel {
+  position: absolute;
+  right: -16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 182px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(11, 15, 14, 0.98), rgba(22, 28, 25, 0.92));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18), 0 8px 16px rgba(11, 15, 14, 0.22);
+}
+
+.g-scroll-wheel::before,
+.g-scroll-wheel::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 7px;
+  height: 54px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.g-scroll-wheel::before {
+  top: 14px;
+}
+
+.g-scroll-wheel::after {
+  bottom: 14px;
+  background: rgba(255, 255, 255, 0.09);
+}
+
 .app-container {
   position: relative;
   width: 404px;
