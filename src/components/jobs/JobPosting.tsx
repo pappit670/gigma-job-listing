@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { ArrowLeft, MapPin, Camera, Check, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { ArrowLeft, MapPin, Camera, Check, X, Zap } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { JOB_CATEGORIES } from '@/types';
 import { LocationPicker } from '@/components/ui/LocationPicker';
+import { pageTransition, tabContent, buttonPress, successBounce } from '@/lib/motion';
 
 interface JobPostingProps {
   onClose: () => void;
@@ -19,14 +19,15 @@ export function JobPosting({ onClose, onSuccess }: JobPostingProps) {
   const [category, setCategory] = useState('');
   const [budget, setBudget] = useState('');
   const [location, setLocation] = useState(state.currentUser?.location.address || 'Nairobi, Kenya');
-  const [coordinates, setCoordinates] = useState({ 
-    lat: state.currentUser?.location.lat || -1.2921, 
-    lng: state.currentUser?.location.lng || 36.8219 
+  const [coordinates, setCoordinates] = useState({
+    lat: state.currentUser?.location.lat || -1.2921,
+    lng: state.currentUser?.location.lng || 36.8219,
   });
   const [preferredTime, setPreferredTime] = useState('');
   const [broadcastRadius, setBroadcastRadius] = useState(5);
   const [photos, setPhotos] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [posted, setPosted] = useState(false);
 
   const totalSteps = 4;
 
@@ -36,9 +37,7 @@ export function JobPosting({ onClose, onSuccess }: JobPostingProps) {
       setIsSubmitting(true);
       try {
         const publicUrl = await uploadImage(file, 'job-photos');
-        if (publicUrl) {
-          setPhotos([...photos, publicUrl]);
-        }
+        if (publicUrl) setPhotos([...photos, publicUrl]);
       } catch (err) {
         console.error('Job photo upload failed:', err);
       } finally {
@@ -47,31 +46,15 @@ export function JobPosting({ onClose, onSuccess }: JobPostingProps) {
     }
   };
 
-  const removePhoto = (index: number) => {
-    setPhotos(photos.filter((_, i) => i !== index));
-  };
+  const removePhoto = (index: number) => setPhotos(photos.filter((_, i) => i !== index));
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
-    
     try {
-      const jobId = await postJob({
-        title,
-        description,
-        category,
-        budget: parseInt(budget),
-        location: {
-          lat: coordinates.lat,
-          lng: coordinates.lng,
-          address: location,
-        },
-        preferredTime,
-        broadcastRadius,
-        photos,
-      });
-
+      const jobId = await postJob({ title, description, category, budget: parseInt(budget), location: { lat: coordinates.lat, lng: coordinates.lng, address: location }, preferredTime, broadcastRadius, photos });
       if (jobId) {
-        onSuccess();
+        setPosted(true);
+        setTimeout(onSuccess, 1800);
       }
     } catch (err) {
       console.error('Failed to post job:', err);
@@ -90,126 +73,108 @@ export function JobPosting({ onClose, onSuccess }: JobPostingProps) {
     }
   };
 
+  const inputStyle = {
+    width: '100%', height: 50, padding: '0 16px', borderRadius: 14,
+    background: '#fff', border: '1.5px solid var(--gigma-line)',
+    fontFamily: 'var(--gigma-sans)', fontSize: 14, color: 'var(--gigma-black)',
+    outline: 'none', boxSizing: 'border-box' as const,
+  };
+
+  const labelStyle = {
+    display: 'block', marginBottom: 8,
+    fontFamily: 'var(--gigma-display)', fontSize: 11, fontWeight: 700,
+    letterSpacing: 0.8, textTransform: 'uppercase' as const, color: 'var(--gigma-muted)',
+  };
+
+  const pillBtn = (active: boolean) => ({
+    padding: '10px 12px', borderRadius: 12, border: `1.5px solid ${active ? 'var(--gigma-green)' : 'var(--gigma-line)'}`,
+    background: active ? 'rgba(15,184,106,0.08)' : '#fff',
+    fontFamily: 'var(--gigma-display)', fontSize: 13, fontWeight: 600,
+    color: active ? 'var(--gigma-green-strong)' : 'var(--gigma-black)',
+    cursor: 'pointer', textAlign: 'left' as const,
+  });
+
   const renderStep = () => {
     switch (step) {
       case 1:
         return (
-          <div className="space-y-6">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             <div>
-              <h2 className="text-title mb-2">What do you need done?</h2>
-              <p className="text-small text-gray-500">
-                Be specific so workers know what to expect
-              </p>
+              <p style={{ fontFamily: 'var(--gigma-display)', fontSize: 22, fontWeight: 700, letterSpacing: -0.6, color: 'var(--gigma-black)', marginBottom: 6 }}>What do you need done?</p>
+              <p style={{ fontFamily: 'var(--gigma-sans)', fontSize: 13, color: 'var(--gigma-muted)' }}>Be specific so workers know what to expect</p>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="text-small font-medium text-gray-700 mb-2 block">
-                  Job Title
-                </label>
-                <Input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Fix leaking kitchen sink"
-                  className="input-gigma"
-                />
-              </div>
+            <div>
+              <label style={labelStyle}>Job Title</label>
+              <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Fix leaking kitchen sink" style={inputStyle} />
+            </div>
 
-              <div>
-                <label className="text-small font-medium text-gray-700 mb-2 block">
-                  Category
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {JOB_CATEGORIES.slice(0, 8).map((cat) => (
-                    <button
-                      key={cat}
-                      onClick={() => setCategory(cat)}
-                      className={`p-3 rounded-xl text-sm font-medium text-left transition-all ${
-                        category === cat
-                          ? 'bg-emerald-500 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
+            <div>
+              <label style={labelStyle}>Category</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                {JOB_CATEGORIES.slice(0, 8).map((cat) => (
+                  <motion.button key={cat} onClick={() => setCategory(cat)} {...buttonPress} style={pillBtn(category === cat)}>
+                    {cat}
+                  </motion.button>
+                ))}
               </div>
+            </div>
 
-              <div>
-                <label className="text-small font-medium text-gray-700 mb-2 block">
-                  Description
-                </label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Describe the job in detail..."
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 resize-none"
-                  rows={4}
-                />
-                <p className="text-caption text-gray-400 mt-1">
-                  {description.length} characters (min 20)
-                </p>
-              </div>
+            <div>
+              <label style={labelStyle}>Description</label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Describe the job in detail…"
+                rows={4}
+                style={{ ...inputStyle, height: 'auto', padding: '14px 16px', resize: 'none', lineHeight: 1.5 }}
+              />
+              <p style={{ fontFamily: 'var(--gigma-mono)', fontSize: 11, color: description.length >= 20 ? 'var(--gigma-green)' : 'var(--gigma-muted)', marginTop: 6 }}>
+                {description.length} / 20 min chars
+              </p>
             </div>
           </div>
         );
 
       case 2:
         return (
-          <div className="space-y-6">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             <div>
-              <h2 className="text-title mb-2">What's your budget?</h2>
-              <p className="text-small text-gray-500">
-                Set a fair price for the work needed
-              </p>
+              <p style={{ fontFamily: 'var(--gigma-display)', fontSize: 22, fontWeight: 700, letterSpacing: -0.6, color: 'var(--gigma-black)', marginBottom: 6 }}>What's your budget?</p>
+              <p style={{ fontFamily: 'var(--gigma-sans)', fontSize: 13, color: 'var(--gigma-muted)' }}>Set a fair price for the work needed</p>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="text-small font-medium text-gray-700 mb-2 block">
-                  Budget (KES)
-                </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">
-                    KES
-                  </span>
-                  <Input
-                    type="number"
-                    value={budget}
-                    onChange={(e) => setBudget(e.target.value)}
-                    placeholder="e.g. 2500"
-                    className="input-gigma pl-14 text-lg"
-                    min={500}
-                  />
-                </div>
+            <div>
+              <label style={labelStyle}>Amount (KES)</label>
+              <div style={{ position: 'relative' }}>
+                <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', fontFamily: 'var(--gigma-display)', fontSize: 13, fontWeight: 600, color: 'var(--gigma-muted)' }}>KES</span>
+                <input type="number" value={budget} onChange={(e) => setBudget(e.target.value)} placeholder="0" min={500} style={{ ...inputStyle, paddingLeft: 52, fontFamily: 'var(--gigma-mono)', fontSize: 22, fontWeight: 700 }} />
               </div>
+            </div>
 
-              <div className="bg-gray-50 rounded-xl p-4">
-                <p className="text-small font-medium text-gray-700 mb-2">Suggested rates:</p>
-                <div className="space-y-2">
-                  <button 
-                    onClick={() => setBudget('1500')}
-                    className="w-full text-left p-3 bg-white rounded-lg hover:bg-emerald-50 transition-colors"
+            <div>
+              <label style={labelStyle}>Quick Picks</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {[
+                  { label: 'Small task', amount: '1500', sub: 'Quick fix, 1–2 hours' },
+                  { label: 'Medium task', amount: '3500', sub: 'Half-day job' },
+                  { label: 'Large task', amount: '7000', sub: 'Full-day or more' },
+                ].map((opt) => (
+                  <motion.button
+                    key={opt.amount}
+                    onClick={() => setBudget(opt.amount)}
+                    {...buttonPress}
+                    style={{ ...pillBtn(budget === opt.amount), display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                   >
-                    <span className="font-medium">Small task</span>
-                    <span className="text-gray-500 ml-2">~ KES 1,500</span>
-                  </button>
-                  <button 
-                    onClick={() => setBudget('3500')}
-                    className="w-full text-left p-3 bg-white rounded-lg hover:bg-emerald-50 transition-colors"
-                  >
-                    <span className="font-medium">Medium task</span>
-                    <span className="text-gray-500 ml-2">~ KES 3,500</span>
-                  </button>
-                  <button 
-                    onClick={() => setBudget('7000')}
-                    className="w-full text-left p-3 bg-white rounded-lg hover:bg-emerald-50 transition-colors"
-                  >
-                    <span className="font-medium">Large task</span>
-                    <span className="text-gray-500 ml-2">~ KES 7,000+</span>
-                  </button>
-                </div>
+                    <div>
+                      <p style={{ fontFamily: 'var(--gigma-display)', fontSize: 14, fontWeight: 600, color: 'var(--gigma-black)', marginBottom: 2 }}>{opt.label}</p>
+                      <p style={{ fontFamily: 'var(--gigma-sans)', fontSize: 11, color: 'var(--gigma-muted)' }}>{opt.sub}</p>
+                    </div>
+                    <span style={{ fontFamily: 'var(--gigma-mono)', fontSize: 14, fontWeight: 700, color: budget === opt.amount ? 'var(--gigma-green-strong)' : 'var(--gigma-muted)' }}>
+                      {Number(opt.amount).toLocaleString()}
+                    </span>
+                  </motion.button>
+                ))}
               </div>
             </div>
           </div>
@@ -217,81 +182,45 @@ export function JobPosting({ onClose, onSuccess }: JobPostingProps) {
 
       case 3:
         return (
-          <div className="space-y-6">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             <div>
-              <h2 className="text-title mb-2">When and where?</h2>
-              <p className="text-small text-gray-500">
-                Help workers find and plan for your job
-              </p>
+              <p style={{ fontFamily: 'var(--gigma-display)', fontSize: 22, fontWeight: 700, letterSpacing: -0.6, color: 'var(--gigma-black)', marginBottom: 6 }}>When and where?</p>
+              <p style={{ fontFamily: 'var(--gigma-sans)', fontSize: 13, color: 'var(--gigma-muted)' }}>Help workers find and plan for your job</p>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="text-small font-medium text-gray-700 mb-2 block">
-                  Location
-                </label>
-                <div className="space-y-4">
-                  <LocationPicker 
-                    initialLocation={coordinates}
-                    onLocationChange={(lat, lng, address) => {
-                      setCoordinates({ lat, lng });
-                      setLocation(address);
-                    }}
-                  />
-                  <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg text-sm text-gray-600">
-                    <MapPin className="w-4 h-4 text-emerald-500 shrink-0" />
-                    <span className="line-clamp-1">{location}</span>
-                  </div>
-                </div>
+            <div>
+              <label style={labelStyle}>Location</label>
+              <LocationPicker
+                initialLocation={coordinates}
+                onLocationChange={(lat, lng, address) => { setCoordinates({ lat, lng }); setLocation(address); }}
+              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'var(--gigma-paper)', borderRadius: 12, marginTop: 8, border: '1.5px solid var(--gigma-line)' }}>
+                <MapPin size={14} color="var(--gigma-green)" />
+                <span style={{ fontFamily: 'var(--gigma-sans)', fontSize: 12, color: 'var(--gigma-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{location}</span>
               </div>
+            </div>
 
-              <div>
-                <label className="text-small font-medium text-gray-700 mb-2 block">
-                  Preferred Time
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {['Today, ASAP', 'Today, Afternoon', 'Tomorrow', 'This Week', 'Flexible'].map((time) => (
-                    <button
-                      key={time}
-                      onClick={() => setPreferredTime(time)}
-                      className={`p-3 rounded-xl text-sm font-medium transition-all ${
-                        preferredTime === time
-                          ? 'bg-emerald-500 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      {time}
-                    </button>
-                  ))}
-                </div>
+            <div>
+              <label style={labelStyle}>Preferred Time</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                {['Today, ASAP', 'Today, Afternoon', 'Tomorrow', 'This Week', 'Flexible'].map((time) => (
+                  <motion.button key={time} onClick={() => setPreferredTime(time)} {...buttonPress} style={pillBtn(preferredTime === time)}>
+                    {time}
+                  </motion.button>
+                ))}
               </div>
+            </div>
 
-              {/* Broadcast Radius */}
-              <div>
-                <label className="text-small font-medium text-gray-700 mb-2 block">
-                  Broadcast Radius
-                </label>
-                <p className="text-caption text-gray-500 mb-2">
-                  How far should we notify workers?
-                </p>
-                <div className="flex gap-2">
-                  {[3, 5, 10, 15].map((radius) => (
-                    <button
-                      key={radius}
-                      onClick={() => setBroadcastRadius(radius)}
-                      className={`flex-1 p-3 rounded-xl text-sm font-medium transition-all ${
-                        broadcastRadius === radius
-                          ? 'bg-emerald-500 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      {radius} km
-                    </button>
-                  ))}
-                </div>
-                <p className="text-caption text-gray-400 mt-2">
-                  ~{broadcastRadius === 3 ? '50' : broadcastRadius === 5 ? '100' : broadcastRadius === 10 ? '250' : '400'}+ workers in this area
-                </p>
+            <div>
+              <label style={labelStyle}>Broadcast Radius</label>
+              <p style={{ fontFamily: 'var(--gigma-sans)', fontSize: 12, color: 'var(--gigma-muted)', marginBottom: 8 }}>How far should we notify workers?</p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {[3, 5, 10, 15].map((r) => (
+                  <motion.button key={r} onClick={() => setBroadcastRadius(r)} {...buttonPress}
+                    style={{ flex: 1, padding: '10px 0', borderRadius: 12, border: `1.5px solid ${broadcastRadius === r ? 'var(--gigma-green)' : 'var(--gigma-line)'}`, background: broadcastRadius === r ? 'rgba(15,184,106,0.08)' : '#fff', fontFamily: 'var(--gigma-display)', fontSize: 13, fontWeight: 700, color: broadcastRadius === r ? 'var(--gigma-green-strong)' : 'var(--gigma-muted)', cursor: 'pointer' }}>
+                    {r}km
+                  </motion.button>
+                ))}
               </div>
             </div>
           </div>
@@ -299,132 +228,140 @@ export function JobPosting({ onClose, onSuccess }: JobPostingProps) {
 
       case 4:
         return (
-          <div className="space-y-6">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             <div>
-              <h2 className="text-title mb-2">Add photos (optional)</h2>
-              <p className="text-small text-gray-500">
-                Photos help workers understand the job better
-              </p>
+              <p style={{ fontFamily: 'var(--gigma-display)', fontSize: 22, fontWeight: 700, letterSpacing: -0.6, color: 'var(--gigma-black)', marginBottom: 6 }}>Add photos</p>
+              <p style={{ fontFamily: 'var(--gigma-sans)', fontSize: 13, color: 'var(--gigma-muted)' }}>Optional — helps workers understand the scope</p>
             </div>
 
-            <div className="space-y-4">
-              <div className="flex gap-3 flex-wrap">
-                {photos.map((photo, index) => (
-                  <div key={index} className="relative w-24 h-24">
-                    <img 
-                      src={photo} 
-                      alt={`Job photo ${index + 1}`}
-                      className="w-full h-full object-cover rounded-xl"
-                    />
-                    <button
-                      onClick={() => removePhoto(index)}
-                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              {photos.map((photo, index) => (
+                <div key={index} style={{ position: 'relative', width: 88, height: 88 }}>
+                  <img src={photo} alt={`Job ${index + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 14 }} />
+                  <button onClick={() => removePhoto(index)} style={{ position: 'absolute', top: -6, right: -6, width: 22, height: 22, borderRadius: '50%', background: '#ef4444', border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                    <X size={10} color="#fff" />
+                  </button>
+                </div>
+              ))}
+              {photos.length < 3 && (
+                <label style={{ width: 88, height: 88, borderRadius: 14, border: '2px dashed var(--gigma-line)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, cursor: 'pointer', background: 'var(--gigma-paper)' }}>
+                  <Camera size={20} color="var(--gigma-muted)" />
+                  <span style={{ fontFamily: 'var(--gigma-display)', fontSize: 10, fontWeight: 600, color: 'var(--gigma-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Add</span>
+                  <input type="file" accept="image/*" onChange={handlePhotoUpload} style={{ display: 'none' }} />
+                </label>
+              )}
+            </div>
+
+            {/* Summary */}
+            <div style={{ background: '#fff', borderRadius: 18, padding: '18px 16px', border: '1.5px solid var(--gigma-line)' }}>
+              <p style={{ fontFamily: 'var(--gigma-display)', fontSize: 13, fontWeight: 700, color: 'var(--gigma-black)', marginBottom: 12 }}>Summary</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {[
+                  { label: 'Title', value: title },
+                  { label: 'Category', value: category },
+                  { label: 'Budget', value: `KES ${parseInt(budget).toLocaleString()}`, green: true },
+                  { label: 'Location', value: location },
+                  { label: 'When', value: preferredTime },
+                  { label: 'Radius', value: `${broadcastRadius} km` },
+                ].map((row) => (
+                  <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
+                    <span style={{ fontFamily: 'var(--gigma-display)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--gigma-muted)', flexShrink: 0 }}>{row.label}</span>
+                    <span style={{ fontFamily: 'var(--gigma-display)', fontSize: 13, fontWeight: 600, color: row.green ? 'var(--gigma-green-strong)' : 'var(--gigma-black)', textAlign: 'right' }}>{row.value}</span>
                   </div>
                 ))}
-                {photos.length < 3 && (
-                  <label className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-emerald-500 hover:bg-emerald-50 transition-colors">
-                    <Camera className="w-6 h-6 text-gray-400 mb-1" />
-                    <span className="text-caption text-gray-500">Add</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handlePhotoUpload}
-                      className="hidden"
-                    />
-                  </label>
-                )}
-              </div>
-
-              {/* Summary */}
-              <div className="bg-gray-50 rounded-xl p-4 space-y-3">
-                <h3 className="font-semibold">Job Summary</h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Title</span>
-                    <span className="font-medium text-right max-w-[60%]">{title}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Category</span>
-                    <span className="font-medium">{category}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Budget</span>
-                    <span className="font-medium text-emerald-600">KES {parseInt(budget).toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Location</span>
-                    <span className="font-medium text-right max-w-[60%]">{location}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">When</span>
-                    <span className="font-medium">{preferredTime}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Broadcast Radius</span>
-                    <span className="font-medium">{broadcastRadius} km</span>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
         );
 
-      default:
-        return null;
+      default: return null;
     }
   };
 
-  return (
-    <div className="min-h-screen bg-white flex flex-col">
-      {/* Header */}
-      <div className="px-4 py-4 border-b border-gray-100 flex items-center gap-4">
-        <button 
-          onClick={step === 1 ? onClose : () => setStep(step - 1)}
-          className="p-2 -ml-2 hover:bg-gray-100 rounded-full"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <div className="flex-1">
-          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-emerald-500 transition-all duration-300"
-              style={{ width: `${(step / totalSteps) * 100}%` }}
-            />
+  if (posted) {
+    return (
+      <motion.div
+        style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--gigma-paper)', padding: 32 }}
+      >
+        <motion.div {...successBounce}>
+          <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'var(--gigma-green)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+            <Check size={32} color="#fff" />
           </div>
+        </motion.div>
+        <p style={{ fontFamily: 'var(--gigma-display)', fontSize: 22, fontWeight: 700, letterSpacing: -0.6, color: 'var(--gigma-black)', textAlign: 'center', marginBottom: 8 }}>Job Posted!</p>
+        <p style={{ fontFamily: 'var(--gigma-sans)', fontSize: 14, color: 'var(--gigma-muted)', textAlign: 'center' }}>Notifying nearby workers…</p>
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div
+      {...pageTransition}
+      style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--gigma-paper)', overflow: 'hidden' }}
+    >
+      {/* Header with progress */}
+      <div style={{ padding: '54px 20px 16px', background: '#fff', borderBottom: '1px solid var(--gigma-line)', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+          <motion.button
+            onClick={step === 1 ? onClose : () => setStep(step - 1)}
+            {...buttonPress}
+            style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--gigma-paper)', border: '1.5px solid var(--gigma-line)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <ArrowLeft size={17} color="var(--gigma-black)" />
+          </motion.button>
+          <div style={{ flex: 1 }}>
+            <div style={{ height: 6, background: 'var(--gigma-line)', borderRadius: 3, overflow: 'hidden' }}>
+              <motion.div
+                animate={{ width: `${(step / totalSteps) * 100}%` }}
+                transition={{ type: 'spring', damping: 22, stiffness: 200 }}
+                style={{ height: '100%', background: 'var(--gigma-green)', borderRadius: 3 }}
+              />
+            </div>
+          </div>
+          <span style={{ fontFamily: 'var(--gigma-mono)', fontSize: 12, fontWeight: 700, color: 'var(--gigma-muted)' }}>{step}/{totalSteps}</span>
         </div>
-        <span className="text-caption text-gray-500">{step}/{totalSteps}</span>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 px-4 py-6">
-        {renderStep()}
+      {/* Step content */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '24px 20px' }}>
+        <AnimatePresence mode="wait">
+          <motion.div key={step} {...tabContent}>
+            {renderStep()}
+          </motion.div>
+        </AnimatePresence>
       </div>
 
-      {/* Footer */}
-      <div className="px-4 py-6 border-t border-gray-100">
-        <Button
+      {/* CTA */}
+      <div style={{ padding: '12px 20px 32px', background: '#fff', borderTop: '1px solid var(--gigma-line)', flexShrink: 0 }}>
+        <motion.button
           onClick={step === totalSteps ? handleSubmit : () => setStep(step + 1)}
           disabled={!canProceed() || isSubmitting}
-          className="w-full btn-primary h-14 text-lg"
+          {...buttonPress}
+          style={{
+            width: '100%', height: 56, borderRadius: 16, border: 'none',
+            background: canProceed() && !isSubmitting ? 'var(--gigma-black)' : 'var(--gigma-line)',
+            color: canProceed() && !isSubmitting ? '#fff' : 'var(--gigma-muted)',
+            fontFamily: 'var(--gigma-display)', fontSize: 16, fontWeight: 600,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            cursor: canProceed() && !isSubmitting ? 'pointer' : 'default',
+            transition: 'background 0.2s, color 0.2s',
+          }}
         >
           {isSubmitting ? (
-            <span className="animate-pulse">Posting...</span>
+            'Posting…'
           ) : step === totalSteps ? (
             <>
+              <Zap size={18} color={canProceed() ? 'var(--gigma-green)' : 'var(--gigma-muted)'} />
               Post Job
-              <Check className="w-5 h-5 ml-2" />
             </>
           ) : (
             <>
               Continue
-              <ArrowLeft className="w-5 h-5 ml-2 rotate-180" />
+              <ArrowLeft size={16} style={{ transform: 'rotate(180deg)' }} />
             </>
           )}
-        </Button>
+        </motion.button>
       </div>
-    </div>
+    </motion.div>
   );
 }

@@ -1,7 +1,8 @@
-import { ArrowLeft, Send, Phone, MoreVertical } from 'lucide-react';
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { useState, useRef, useEffect } from 'react';
+import { ArrowLeft, Send, Phone, MessageCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
+import { pageTransition, slideInFromRight, staggerContainer, cardItem, buttonPress } from '@/lib/motion';
 
 interface ChatViewProps {
   onClose: () => void;
@@ -11,178 +12,220 @@ export function ChatView({ onClose }: ChatViewProps) {
   const { state, sendMessage } = useApp();
   const [message, setMessage] = useState('');
   const [activeChat, setActiveChat] = useState<string | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Derive conversations from jobs that have a worker assigned
-  const myJobs = state.jobs.filter(j => 
-    (j.clientId === state.currentUser?.id || j.workerId === state.currentUser?.id) &&
-    j.status !== 'ready'
+  const myJobs = state.jobs.filter(j =>
+    (j.clientId === state.currentUser?.id || j.workerId === state.currentUser?.id) && j.status !== 'ready'
   );
 
   const conversations = myJobs.map(job => {
     const isClient = job.clientId === state.currentUser?.id;
     const otherPartyId = isClient ? job.workerId : job.clientId;
-    const otherParty = state.workers.find(w => w.id === otherPartyId) || 
-                       (state.currentUser?.id === otherPartyId ? state.currentUser : null);
-    
-    // Get last message for this job
+    const otherParty = state.workers.find(w => w.id === otherPartyId) ||
+      (state.currentUser?.id === otherPartyId ? state.currentUser : null);
     const jobMessages = state.messages.filter(m => m.jobId === job.id);
     const lastMsg = jobMessages[jobMessages.length - 1];
-
     return {
       id: job.id,
       name: otherParty?.nickname || otherParty?.realName || 'User',
-      photo: otherParty?.photo || 'https://via.placeholder.com/100',
+      photo: otherParty?.photo || '',
       lastMessage: lastMsg?.content || 'No messages yet',
       time: lastMsg ? new Date(lastMsg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
-      unread: 0, // Simplified for MVP
+      unread: 0,
       jobTitle: job.title,
     };
   });
 
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [activeChat, state.messages.length]);
+
   const handleSend = async () => {
     if (!message.trim() || !activeChat) return;
-    
     try {
       await sendMessage(activeChat, message.trim());
       setMessage('');
     } catch (err) {
-      console.error('Failed to send message:', err);
+      console.error('Failed to send:', err);
     }
   };
 
   if (activeChat) {
     const chat = conversations.find(c => c.id === activeChat);
+    const msgs = state.messages.filter(m => m.jobId === activeChat);
+
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        {/* Header */}
-        <div className="bg-white px-4 py-3 sticky top-0 z-10 border-b border-gray-100 flex items-center gap-3">
-          <button 
+      <motion.div
+        key="chat-thread"
+        {...slideInFromRight}
+        style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--gigma-paper)', overflow: 'hidden' }}
+      >
+        {/* Thread header */}
+        <div style={{ padding: '54px 16px 12px', background: '#fff', borderBottom: '1px solid var(--gigma-line)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <motion.button
             onClick={() => setActiveChat(null)}
-            className="p-2 -ml-2 hover:bg-gray-100 rounded-full"
+            {...buttonPress}
+            style={{ width: 36, height: 36, borderRadius: 10, border: '1.5px solid var(--gigma-line)', background: 'var(--gigma-paper)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <img 
-            src={chat?.photo} 
-            alt={chat?.name} 
-            className="w-10 h-10 rounded-full object-cover"
-          />
-          <div className="flex-1">
-            <p className="font-semibold">{chat?.name}</p>
-            <p className="text-caption text-gray-500">{chat?.jobTitle}</p>
+            <ArrowLeft size={17} color="var(--gigma-black)" />
+          </motion.button>
+          {chat?.photo ? (
+            <img src={chat.photo} alt={chat.name} style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--gigma-line)' }} />
+          ) : (
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--gigma-black)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--gigma-display)', fontWeight: 700, fontSize: 14, color: 'var(--gigma-green)' }}>
+              {(chat?.name?.[0] ?? 'U').toUpperCase()}
+            </div>
+          )}
+          <div style={{ flex: 1 }}>
+            <p style={{ fontFamily: 'var(--gigma-display)', fontSize: 14, fontWeight: 700, color: 'var(--gigma-black)', lineHeight: 1.2 }}>{chat?.name}</p>
+            <p style={{ fontFamily: 'var(--gigma-sans)', fontSize: 11, color: 'var(--gigma-muted)' }}>{chat?.jobTitle}</p>
           </div>
-          <button className="p-2 hover:bg-gray-100 rounded-full">
-            <Phone className="w-5 h-5 text-gray-600" />
-          </button>
-          <button className="p-2 hover:bg-gray-100 rounded-full">
-            <MoreVertical className="w-5 h-5 text-gray-600" />
-          </button>
+          <motion.button
+            {...buttonPress}
+            style={{ width: 36, height: 36, borderRadius: 10, border: '1.5px solid var(--gigma-line)', background: 'var(--gigma-paper)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Phone size={16} color="var(--gigma-muted)" />
+          </motion.button>
         </div>
 
         {/* Messages */}
-        <div className="flex-1 p-4 space-y-4 overflow-y-auto">
-          {state.messages.filter(m => m.jobId === activeChat).map((msg) => (
-            <div 
-              key={msg.id}
-              className={`flex ${msg.senderId === state.currentUser?.id ? 'justify-end' : 'justify-start'}`}
-            >
-              <div 
-                className={`max-w-[80%] px-4 py-2.5 rounded-2xl ${
-                  msg.senderId === state.currentUser?.id
-                    ? 'bg-emerald-500 text-white rounded-br-md'
-                    : 'bg-white text-gray-800 rounded-bl-md'
-                }`}
-              >
-                <p>{msg.content}</p>
-                <p className={`text-xs mt-1 ${msg.senderId === state.currentUser?.id ? 'text-emerald-100' : 'text-gray-400'}`}>
-                  {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </p>
-              </div>
-            </div>
-          ))}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <AnimatePresence initial={false}>
+            {msgs.length === 0 ? (
+              <motion.div key="no-msgs" {...cardItem} style={{ textAlign: 'center', padding: '40px 20px', marginTop: 'auto' }}>
+                <p style={{ fontFamily: 'var(--gigma-sans)', fontSize: 13, color: 'var(--gigma-muted)' }}>Send a message to get started</p>
+              </motion.div>
+            ) : (
+              msgs.map((msg) => {
+                const isMe = msg.senderId === state.currentUser?.id;
+                return (
+                  <motion.div
+                    key={msg.id}
+                    initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ type: 'spring', damping: 22, stiffness: 300 }}
+                    style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start' }}
+                  >
+                    <div style={{
+                      maxWidth: '80%',
+                      padding: '10px 14px',
+                      borderRadius: isMe ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                      background: isMe ? 'var(--gigma-black)' : '#fff',
+                      border: isMe ? 'none' : '1.5px solid var(--gigma-line)',
+                    }}>
+                      <p style={{ fontFamily: 'var(--gigma-sans)', fontSize: 14, color: isMe ? '#fff' : 'var(--gigma-black)', lineHeight: 1.4, margin: 0 }}>
+                        {msg.content}
+                      </p>
+                      <p style={{ fontFamily: 'var(--gigma-mono)', fontSize: 10, color: isMe ? 'rgba(255,255,255,0.4)' : 'var(--gigma-muted)', marginTop: 4 }}>
+                        {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                  </motion.div>
+                );
+              })
+            )}
+          </AnimatePresence>
+          <div ref={messagesEndRef} />
         </div>
 
         {/* Input */}
-        <div className="bg-white p-4 border-t border-gray-100">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-              placeholder="Type a message..."
-              className="flex-1 px-4 py-3 rounded-full border border-gray-200 text-sm focus:outline-none focus:border-emerald-500"
-            />
-            <Button 
-              onClick={handleSend}
-              disabled={!message.trim()}
-              className="w-12 h-12 rounded-full bg-emerald-500 hover:bg-emerald-600 p-0 flex items-center justify-center"
-            >
-              <Send className="w-5 h-5" />
-            </Button>
-          </div>
+        <div style={{ padding: '10px 16px 24px', background: '#fff', borderTop: '1px solid var(--gigma-line)', display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 }}>
+          <input
+            type="text"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+            placeholder="Message…"
+            style={{
+              flex: 1, height: 44, padding: '0 16px', borderRadius: 22,
+              background: 'var(--gigma-paper)', border: '1.5px solid var(--gigma-line)',
+              fontFamily: 'var(--gigma-sans)', fontSize: 14, color: 'var(--gigma-black)', outline: 'none',
+            }}
+          />
+          <motion.button
+            onClick={handleSend}
+            disabled={!message.trim()}
+            {...buttonPress}
+            style={{
+              width: 44, height: 44, borderRadius: 22, border: 'none',
+              background: message.trim() ? 'var(--gigma-black)' : 'var(--gigma-line)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: message.trim() ? 'pointer' : 'default',
+              transition: 'background 0.15s',
+            }}
+          >
+            <Send size={18} color={message.trim() ? 'var(--gigma-green)' : 'var(--gigma-muted)'} />
+          </motion.button>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <motion.div
+      key="chat-list"
+      {...pageTransition}
+      style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--gigma-paper)', overflow: 'hidden' }}
+    >
       {/* Header */}
-      <div className="bg-white px-4 py-4 sticky top-0 z-10 border-b border-gray-100 flex items-center gap-4">
-        <button 
-          onClick={onClose}
-          className="p-2 -ml-2 hover:bg-gray-100 rounded-full"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <h1 className="text-title">Messages</h1>
+      <div style={{ padding: '54px 20px 16px', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <motion.button
+            onClick={onClose}
+            {...buttonPress}
+            style={{ width: 38, height: 38, borderRadius: 12, background: '#fff', border: '1.5px solid var(--gigma-line)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <ArrowLeft size={18} color="var(--gigma-black)" />
+          </motion.button>
+          <span style={{ fontFamily: 'var(--gigma-display)', fontWeight: 700, fontSize: 20, letterSpacing: -0.5, color: 'var(--gigma-black)', flex: 1 }}>
+            Messages
+          </span>
+        </div>
       </div>
 
-      <div className="p-4">
+      <div style={{ flex: 1, overflowY: 'auto', padding: '4px 20px 100px' }}>
         {conversations.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Send className="w-8 h-8 text-gray-400" />
+          <motion.div
+            {...cardItem}
+            style={{ textAlign: 'center', padding: '60px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}
+          >
+            <div style={{ width: 64, height: 64, borderRadius: 20, background: '#fff', border: '1.5px solid var(--gigma-line)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <MessageCircle size={28} color="var(--gigma-line)" />
             </div>
-            <p className="text-gray-500">No messages yet</p>
-            <p className="text-caption text-gray-400">
-              Messages will appear here when you start chatting
+            <p style={{ fontFamily: 'var(--gigma-display)', fontSize: 15, fontWeight: 700, color: 'var(--gigma-black)' }}>No messages yet</p>
+            <p style={{ fontFamily: 'var(--gigma-sans)', fontSize: 13, color: 'var(--gigma-muted)', maxWidth: 220, lineHeight: 1.5 }}>
+              Start a job to connect with workers or clients
             </p>
-          </div>
+          </motion.div>
         ) : (
-          <div className="space-y-2">
+          <motion.div variants={staggerContainer} initial="initial" animate="animate" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {conversations.map((chat) => (
-              <button
+              <motion.button
                 key={chat.id}
+                variants={cardItem}
                 onClick={() => setActiveChat(chat.id)}
-                className="w-full bg-white rounded-xl p-4 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left"
+                {...buttonPress}
+                style={{ width: '100%', background: '#fff', borderRadius: 16, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, border: '1.5px solid var(--gigma-line)', textAlign: 'left', cursor: 'pointer' }}
               >
-                <div className="relative">
-                  <img 
-                    src={chat.photo} 
-                    alt={chat.name} 
-                    className="w-12 h-12 rounded-full object-cover"
-                  />
-                  {chat.unread > 0 && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
-                      {chat.unread}
-                    </span>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <p className="font-semibold truncate">{chat.name}</p>
-                    <span className="text-caption text-gray-400">{chat.time}</span>
+                {chat.photo ? (
+                  <img src={chat.photo} alt={chat.name} style={{ width: 46, height: 46, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                ) : (
+                  <div style={{ width: 46, height: 46, borderRadius: '50%', background: 'var(--gigma-black)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--gigma-display)', fontWeight: 700, fontSize: 18, color: 'var(--gigma-green)', flexShrink: 0 }}>
+                    {(chat.name[0] ?? 'U').toUpperCase()}
                   </div>
-                  <p className="text-caption text-gray-500 truncate">{chat.lastMessage}</p>
-                  <p className="text-caption text-emerald-600">{chat.jobTitle}</p>
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                    <p style={{ fontFamily: 'var(--gigma-display)', fontSize: 14, fontWeight: 700, color: 'var(--gigma-black)' }}>{chat.name}</p>
+                    <span style={{ fontFamily: 'var(--gigma-mono)', fontSize: 11, color: 'var(--gigma-muted)' }}>{chat.time}</span>
+                  </div>
+                  <p style={{ fontFamily: 'var(--gigma-sans)', fontSize: 12, color: 'var(--gigma-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{chat.lastMessage}</p>
+                  <p style={{ fontFamily: 'var(--gigma-display)', fontSize: 11, fontWeight: 600, color: 'var(--gigma-green-strong)', marginTop: 4 }}>{chat.jobTitle}</p>
                 </div>
-              </button>
+              </motion.button>
             ))}
-          </div>
+          </motion.div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
